@@ -1,0 +1,350 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}My Schedule - Employee Timetable System{% endblock %}
+{% block page_title %}My Schedule{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-filter"></i> Filter
+    </button>
+    <div class="dropdown-menu">
+        <form method="get" class="p-3" style="min-width: 300px;">
+            <div class="mb-3">
+                <label for="month" class="form-label">Month</label>
+                <select name="month" id="month" class="form-select">
+                    {% for date in available_months %}
+                    <option value="{{ date.month }}" {% if date.month == selected_month %}selected{% endif %}>
+                        {{ date|date:"F Y" }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="year" class="form-label">Year</label>
+                <select name="year" id="year" class="form-select">
+                    {% for date in available_years %}
+                    <option value="{{ date.year }}" {% if date.year == selected_year %}selected{% endif %}>
+                        {{ date.year }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Apply Filter</button>
+        </form>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="btn-group ms-2">
+    <span class="btn btn-outline-success disabled">
+        <i class="bi bi-calendar-check"></i> {{ working_days }} Working
+    </span>
+    <span class="btn btn-outline-danger disabled">
+        <i class="bi bi-calendar-x"></i> {{ off_days }} Off
+    </span>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<style>
+    #calendar {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .fc-event {
+        border: none;
+        padding: 2px 4px;
+        font-size: 0.85em;
+    }
+    .fc-daygrid-event-dot {
+        display: none;
+    }
+    .schedule-swapped {
+        border-left: 4px solid #20c997 !important;
+    }
+    .schedule-auto {
+        border-left: 4px solid #6f42c1 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Employee Information -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Employee:</strong> {{ employee.name }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Department:</strong> 
+                        <span class="badge {% if employee.department == 'inbound' %}bg-primary{% else %}bg-info{% endif %}">
+                            {{ employee.get_department_display }}
+                        </span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Start Date:</strong> {{ employee.start_date|date:"M j, Y" }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Period:</strong> {{ current_month_name }} {{ selected_year }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Swap Information -->
+        {% if approved_swaps_received or approved_swaps_sent %}
+        <div class="alert alert-info mb-4">
+            <h6><i class="bi bi-arrow-left-right"></i> Approved Shift Swaps</h6>
+            {% if approved_swaps_received %}
+            <p class="mb-1">
+                <strong>Received:</strong> You accepted {{ approved_swaps_received|length }} swap request(s)
+            </p>
+            {% endif %}
+            {% if approved_swaps_sent %}
+            <p class="mb-0">
+                <strong>Sent:</strong> {{ approved_swaps_sent|length }} of your swap requests were accepted
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Calendar View -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar3"></i> Calendar View - {{ current_month_name }} {{ selected_year }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="calendar"></div>
+            </div>
+        </div>
+
+        <!-- Schedule Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list"></i> Schedule List
+                    <small class="text-muted">({{ schedules.paginator.count }} schedules)</small>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if schedules %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Day</th>
+                                <th>Shift Type</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Lunch Time</th>
+                                <th>Status</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for schedule in schedules %}
+                            <tr class="{% if schedule.is_off %}table-secondary{% endif %} 
+                                      {% if schedule.date in swap_info %}schedule-swapped{% endif %}
+                                      {% if schedule.is_auto_generated %}schedule-auto{% endif %}">
+                                <td>
+                                    <strong>{{ schedule.date|date:"M j, Y" }}</strong>
+                                    {% if schedule.date in swap_info %}
+                                    <br>
+                                    <small class="text-success">
+                                        <i class="bi bi-arrow-left-right"></i> Swapped
+                                    </small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ schedule.date|date:"l" }}</td>
+                                <td>
+                                    {% if schedule.is_off %}
+                                    <span class="badge bg-danger">Day Off</span>
+                                    {% else %}
+                                    {% if schedule.start_time.hour == 8 %}
+                                    <span class="badge bg-success">Early Shift</span>
+                                    {% elif schedule.start_time.hour == 9 %}
+                                    <span class="badge bg-primary">Morning Shift</span>
+                                    {% elif schedule.start_time.hour == 10 %}
+                                    <span class="badge bg-warning">Mid Shift</span>
+                                    {% elif schedule.start_time.hour == 11 %}
+                                    <span class="badge bg-info">Late Shift</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Custom Shift</span>
+                                    {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ schedule.start_time|time:"H:i" }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-danger">{{ schedule.end_time|time:"H:i" }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">{{ schedule.lunch_time|time:"H:i" }}</span>
+                                </td>
+                                <td>
+                                    {% if schedule.is_off %}
+                                    <span class="badge bg-danger">Day Off</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Working</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if schedule.is_auto_generated %}
+                                    <span class="badge bg-info" title="Auto-generated schedule">
+                                        <i class="bi bi-robot"></i> Auto
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning" title="Manual schedule">
+                                        <i class="bi bi-person"></i> Manual
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if not schedule.is_off %}
+                                    <a href="{% url 'my_swap_requests' %}?date={{ schedule.date|date:'Y-m-d' }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-arrow-left-right"></i> Swap
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Simplified Swap Information Row -->
+                            {% if schedule.date in swap_info %}
+                            <tr class="bg-light">
+                                <td colspan="9" class="small">
+                                    <i class="bi bi-info-circle text-info"></i>
+                                    <strong>Swap Details:</strong>
+                                    This shift was swapped.
+                                    {% for swap_key, swap_data in swap_info.items %}
+                                        {% if swap_key == schedule.date %}
+                                            Swapped with {{ swap_data.other_employee.name }}.
+                                            {{ swap_data.action }}.
+                                            {% if swap_data.swap.approved_by %}
+                                            Approved by: {{ swap_data.swap.approved_by.get_full_name }}
+                                            on {{ swap_data.swap.approved_at|date:"M j, Y" }}.
+                                            {% else %}
+                                            Approved by: System.
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if schedules.has_other_pages %}
+                <nav aria-label="Schedule pagination">
+                    <ul class="pagination justify-content-center mt-4">
+                        {% if schedules.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ schedules.previous_page_number }}&month={{ selected_month }}&year={{ selected_year }}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in schedules.paginator.page_range %}
+                            {% if schedules.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}&month={{ selected_month }}&year={{ selected_year }}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if schedules.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ schedules.next_page_number }}&month={{ selected_month }}&year={{ selected_year }}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x display-1 text-muted"></i>
+                    <h4 class="text-muted mt-3">No schedules found</h4>
+                    <p class="text-muted">
+                        No schedules found for the selected period.
+                        {% if employee.start_date %}
+                        <br>Your employment started on {{ employee.start_date|date:"M j, Y" }}.
+                        {% endif %}
+                    </p>
+                    {% if perms.timetable.add_timetable %}
+                    <a href="{% url 'generate_timetable' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Generate Timetable
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendarData = {{ calendar_data|safe }};
+    
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        initialDate: '{{ selected_year }}-{{ selected_month }}-01',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: calendarData,
+        eventClick: function(info) {
+            var event = info.event;
+            var props = event.extendedProps;
+            var message = 'Shift: ' + props.shift_type + '\n' +
+                         'Time: ' + props.start_time + ' - ' + props.end_time + '\n' +
+                         'Lunch: ' + props.lunch_time + '\n' +
+                         'Status: ' + props.status;
+            
+            // Add swap information if available
+            if (props.swap_info) {
+                message += '\n\n--- Swap Details ---\n' +
+                          'Type: ' + (props.swap_info.type === 'received' ? 'Received from' : 'Sent to') + '\n' +
+                          'With: ' + props.swap_info.other_employee + '\n' +
+                          'Action: ' + props.swap_info.action + '\n' +
+                          'Approved by: ' + props.swap_info.approved_by + '\n' +
+                          'Approved at: ' + props.swap_info.approved_at;
+            }
+            
+            // Add auto-generation info
+            if (props.is_off === false) {
+                message += '\nSchedule Type: ' + (event.color === '#6f42c1' ? 'Auto-generated' : 'Manual');
+            }
+            
+            alert(message);
+        }
+    });
+    
+    calendar.render();
+});
+</script>
+{% endblock %}

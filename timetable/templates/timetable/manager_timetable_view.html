@@ -1,0 +1,273 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block title %}{{ timetable }} - Manager View{% endblock %}
+
+{% block page_title %}{{ timetable }} - Manager View{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    {% if show_department_filter %}
+    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-filter"></i> Department: {{ selected_department|title }}
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="?department=inbound">Inbound</a></li>
+        <li><a class="dropdown-item" href="?department=outbound">Outbound</a></li>
+    </ul>
+    {% endif %}
+    
+    <a href="{% url 'adjust_timetable' timetable.id %}" class="btn btn-sm btn-outline-warning">
+        <i class="bi bi-pencil"></i> Adjust Timetable
+    </a>
+    <a href="{% url 'food_pickup' timetable.id %}" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-egg-fried"></i> Food Pickup
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Department Summary -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center py-3">
+                <h5 class="card-title">{{ selected_department|title }} Department</h5>
+                <p class="mb-0">Manager: {{ manager.name }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center py-3">
+                <h4>{{ schedules_by_date|length }}</h4>
+                <p class="mb-0">Scheduled Days</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center py-3">
+                <h4>
+                    {% with total=0 %}
+                    {% for date_schedules in schedules_by_date.values %}
+                    {% for schedule in date_schedules %}
+                    {% if not schedule.is_off %}
+                    {{ total|add:1 }}
+                    {% endif %}
+                    {% endfor %}
+                    {% endfor %}
+                    {{ total }}
+                    {% endwith %}
+                </h4>
+                <p class="mb-0">Working Shifts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center py-3">
+                <h4>
+                    {% with total=0 %}
+                    {% for date_schedules in schedules_by_date.values %}
+                    {% for schedule in date_schedules %}
+                    {% if schedule.is_off %}
+                    {{ total|add:1 }}
+                    {% endif %}
+                    {% endfor %}
+                    {% endfor %}
+                    {{ total }}
+                    {% endwith %}
+                </h4>
+                <p class="mb-0">Days Off</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timetable Schedule -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-calendar-week"></i>
+            {{ selected_department|title }} Department Schedule
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if schedules_by_date %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th>Employee</th>
+                        <th>Shift</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Lunch</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for date_str, date_schedules in schedules_by_date.items %}
+                    {% for schedule in date_schedules %}
+                    <tr>
+                        <td>
+                            <strong>{{ schedule.date }}</strong>
+                            <br>
+                            <small class="text-muted">{{ schedule.date|date:"l" }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ schedule.employee.name }}</strong>
+                            <br>
+                            <small class="text-muted">{{ schedule.employee.employee_id }}</small>
+                        </td>
+                        <td>
+                            {% if schedule.is_off %}
+                            <span class="badge bg-danger">OFF</span>
+                            {% else %}
+                            {% if schedule.start_time.hour == 8 %}
+                            <span class="badge bg-success">Early</span>
+                            {% elif schedule.start_time.hour == 9 %}
+                            <span class="badge bg-primary">Morning</span>
+                            {% elif schedule.start_time.hour == 10 %}
+                            <span class="badge bg-warning">Mid</span>
+                            {% elif schedule.start_time.hour == 11 %}
+                            <span class="badge bg-orange">Late</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Custom</span>
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if schedule.is_off %}
+                            <span class="text-muted">-</span>
+                            {% else %}
+                            {{ schedule.start_time|time:"H:i" }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if schedule.is_off %}
+                            <span class="text-muted">-</span>
+                            {% else %}
+                            {{ schedule.end_time|time:"H:i" }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if schedule.is_off %}
+                            <span class="text-muted">-</span>
+                            {% else %}
+                            {{ schedule.lunch_time|time:"H:i" }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if schedule.is_off %}
+                            <span class="badge bg-danger">Day Off</span>
+                            {% else %}
+                            <span class="badge bg-success">Working</span>
+                            {% endif %}
+                            
+                            {% if schedule.swap_info %}
+                            <br>
+                            <small class="text-warning">
+                                <i class="bi bi-arrow-left-right"></i> Swapped
+                            </small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if schedule.swap_info %}
+                            <small class="text-warning">
+                                Swapped with {{ schedule.swap_info.requester.name }}
+                            </small>
+                            {% elif schedule.replacement %}
+                            <small class="text-info">
+                                Replaced by {{ schedule.replacement.name }}
+                            </small>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-calendar-x fs-1 text-muted"></i>
+            <h4 class="text-muted mt-3">No schedules found</h4>
+            <p class="text-muted">There are no schedules for the {{ selected_department }} department in this timetable.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Schedule Legend
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <span class="badge bg-success me-2">Early</span>
+                        <small class="text-muted">8:00 AM Start</small>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-primary me-2">Morning</span>
+                        <small class="text-muted">9:00 AM Start</small>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-warning me-2">Mid</span>
+                        <small class="text-muted">10:00 AM Start</small>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-orange me-2">Late</span>
+                        <small class="text-muted">11:00 AM Start</small>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-4">
+                        <span class="badge bg-danger me-2">OFF</span>
+                        <small class="text-muted">Day Off</small>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="badge bg-secondary me-2">Custom</span>
+                        <small class="text-muted">Custom Shift</small>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="badge bg-warning me-2">
+                            <i class="bi bi-arrow-left-right"></i>
+                        </span>
+                        <small class="text-muted">Shift Swap</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.bg-orange {
+    background-color: #fd7e14 !important;
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.table td {
+    vertical-align: middle;
+}
+</style>
+{% endblock %}

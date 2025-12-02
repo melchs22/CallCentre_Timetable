@@ -1,0 +1,307 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Employee Management - Employee Timetable System{% endblock %}
+{% block page_title %}Employee Management{% endblock %}
+
+{% block page_actions %}
+{% if can_add_employee %}
+<a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+    <i class="bi bi-person-plus"></i> Add Employee
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Search and Filter -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" name="search" class="form-control" 
+                                   placeholder="Search employees by name, ID, or department..." 
+                                   value="{{ search_query }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-filter"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- New Employee Notifications -->
+        {% if employees_without_schedules %}
+        <div class="alert alert-warning mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>{{ employees_without_schedules|length }} employee(s)</strong> need to be added to existing timetables.
+                </div>
+                <a href="{% url 'add_employees_to_timetables' %}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-calendar-plus"></i> Add to Timetables
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Employees Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-people"></i> Employees ({{ employees.paginator.count }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if employees %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Position</th>
+                                <th>Start Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for employee in employees %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-secondary">{{ employee.employee_id }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ employee.name }}</strong>
+                                    {% if employee.user %}
+                                    <br><small class="text-muted">@{{ employee.user.username }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if employee.department == 'inbound' %}bg-primary{% else %}bg-info{% endif %}">
+                                        {{ employee.get_department_display }}
+                                    </span>
+                                </td>
+                                <td>{{ employee.position|default:"-" }}</td>
+                                <td>
+                                    <small class="text-muted">{{ employee.start_date|date:"M j, Y" }}</small>
+                                </td>
+                                <td>
+                                    {% if employee.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <!-- View Employee Details -->
+                                        <a href="{% url 'employee_detail' employee.id %}" 
+                                           class="btn btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        
+                                        <!-- Add to Timetables -->
+                                        {% if can_add_employee %}
+                                        <a href="{% url 'add_employee_to_timetable' employee.id %}" 
+                                           class="btn btn-outline-success" title="Add to Timetables">
+                                            <i class="bi bi-calendar-plus"></i>
+                                        </a>
+                                        {% endif %}
+                                        
+                                        <!-- Edit Employee -->
+                                        {% if can_change_employee %}
+                                        <a href="{% url 'admin:timetable_employee_change' employee.id %}" 
+                                           class="btn btn-outline-warning" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        {% endif %}
+                                        
+                                        <!-- Delete Employee -->
+                                        {% if can_delete_employee %}
+                                        <a href="{% url 'admin:timetable_employee_delete' employee.id %}" 
+                                           class="btn btn-outline-danger" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if employees.has_other_pages %}
+                <nav aria-label="Employee pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if employees.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ employees.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in employees.paginator.page_range %}
+                            {% if employees.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if employees.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ employees.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-people display-1 text-muted"></i>
+                    <h4 class="text-muted mt-3">No employees found</h4>
+                    <p class="text-muted">
+                        {% if search_query %}
+                        No employees match your search criteria.
+                        {% else %}
+                        No employees have been added yet.
+                        {% endif %}
+                    </p>
+                    {% if can_add_employee %}
+                    <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+                        <i class="bi bi-person-plus"></i> Add First Employee
+                    </button>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Employee Modal -->
+{% if can_add_employee %}
+<div class="modal fade" id="addEmployeeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Employee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_name" class="form-label">Full Name *</label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                <div class="text-danger small">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_employee_id" class="form-label">Employee ID</label>
+                                {{ form.employee_id }}
+                                <div class="form-text">Leave blank to auto-generate</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_email" class="form-label">Email</label>
+                                {{ form.email }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_phone" class="form-label">Phone</label>
+                                {{ form.phone }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_department" class="form-label">Department *</label>
+                                {{ form.department }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_position" class="form-label">Position</label>
+                                {{ form.position }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_start_date" class="form-label">Start Date *</label>
+                                {{ form.start_date }}
+                                <div class="form-text">Employee will be scheduled from this date</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Auto-Schedule</label>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="auto_schedule" name="auto_schedule" checked>
+                                    <label class="form-check-label" for="auto_schedule">
+                                        Automatically add to existing timetables
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-focus search field
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('input[name="search"]');
+    if (searchInput) {
+        searchInput.focus();
+    }
+    
+    // Set default start date to today
+    const startDateField = document.getElementById('id_start_date');
+    if (startDateField && !startDateField.value) {
+        const today = new Date().toISOString().split('T')[0];
+        startDateField.value = today;
+    }
+});
+</script>
+{% endblock %}

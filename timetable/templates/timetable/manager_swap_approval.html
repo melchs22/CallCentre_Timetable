@@ -1,0 +1,147 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block title %}Approve Shift Swaps - Timetable System{% endblock %}
+
+{% block page_title %}Approve Shift Swaps{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'admin_shift_swaps' %}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-arrow-left-right"></i> All Swap Requests
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-check-circle text-warning"></i>
+            Pending Swap Requests for Approval
+            <span class="badge bg-warning ms-2">{{ swap_requests.paginator.count }}</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if swap_requests %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Requester</th>
+                        <th>Requested To</th>
+                        <th>Swap Date</th>
+                        <th>Status</th>
+                        <th>Requested</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for swap in swap_requests %}
+                    <tr>
+                        <td>
+                            <strong>{{ swap.requester.name }}</strong>
+                            <br>
+                            <small class="text-muted">{{ swap.requester.employee_id }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ swap.requested_to.name }}</strong>
+                            <br>
+                            <small class="text-muted">{{ swap.requested_to.employee_id }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ swap.requested_date }}</strong>
+                        </td>
+                        <td>
+                            {% if swap.status == 'pending' %}
+                            <span class="badge bg-warning">Pending Employee</span>
+                            {% elif swap.status == 'employee_approved' %}
+                            <span class="badge bg-info">Employee Approved</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ swap.created_at|date:"M d, Y" }}</small>
+                            <br>
+                            <small class="text-muted">{{ swap.created_at|timesince }} ago</small>
+                        </td>
+                        <td>
+                            <a href="{% url 'manager_approve_swap' swap.id %}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Review
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if swap_requests.has_other_pages %}
+        <nav aria-label="Swap requests pagination">
+            <ul class="pagination justify-content-center">
+                {% if swap_requests.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ swap_requests.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+
+                {% for num in swap_requests.paginator.page_range %}
+                {% if swap_requests.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if swap_requests.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ swap_requests.next_page_number }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-check-circle fs-1 text-muted"></i>
+            <h4 class="text-muted mt-3">No pending swap requests</h4>
+            <p class="text-muted">All swap requests have been processed.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Approval Statistics -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h3>{{ swap_requests.paginator.count }}</h3>
+                <p class="mb-0">Pending Approval</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>{{ manager.department_access|title }}</h3>
+                <p class="mb-0">Department</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3>{{ manager.name }}</h3>
+                <p class="mb-0">Approving Manager</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

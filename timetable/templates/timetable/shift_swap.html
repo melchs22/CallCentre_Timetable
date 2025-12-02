@@ -1,0 +1,81 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h1>Shift Swap Requests</h1>
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex: 1;">
+        <h2>Request Shift Swap</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div style="margin-bottom: 10px;">
+                <label for="id_requested_to">Swap With:</label>
+                {{ form.requested_to }}
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="id_requested_date">Requested Date:</label>
+                {{ form.requested_date }}
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="id_reason">Reason:</label>
+                {{ form.reason }}
+            </div>
+            <button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px;">
+                Submit Request
+            </button>
+        </form>
+    </div>
+
+    <div style="flex: 2;">
+        <h2>Pending Requests</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Requester</th>
+                    <th>Requested To</th>
+                    <th>Date</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in swap_requests %}
+                <tr>
+                    <td>{{ request.requester.name }}</td>
+                    <td>{{ request.requested_to.name }}</td>
+                    <td>{{ request.requested_date|date:"M d, Y" }}</td>
+                    <td>{{ request.reason }}</td>
+                    <td>
+                        <span style="
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-size: 12px;
+                            {% if request.status == 'pending' %}background: #fff3cd; color: #856404;
+                            {% elif request.status == 'approved' %}background: #d4edda; color: #155724;
+                            {% else %}background: #f8d7da; color: #721c24;{% endif %}
+                        ">
+                            {{ request.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if request.status == 'pending' %}
+                        <form method="post" action="{% url 'approve_shift_swap' request.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" style="padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 12px;">
+                                Approve
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center;">No shift swap requests found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

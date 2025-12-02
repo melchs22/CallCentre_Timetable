@@ -1,0 +1,289 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block title %}Adjust Timetable - {{ timetable }}{% endblock %}
+
+{% block page_title %}Adjust Timetable - {{ timetable }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'timetable_view' timetable.id %}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-eye"></i> View Timetable
+    </a>
+    <a href="{% url 'food_pickup' timetable.id %}" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-egg-fried"></i> Food Pickup
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Time Off Requests -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-x"></i>
+                    Time Off Requests
+                    <span class="badge bg-primary ms-2">{{ time_off_requests.count }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Time Off Form -->
+                <form method="post" class="mb-4">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ time_off_form.employee.id_for_label }}" class="form-label">Employee</label>
+                            {{ time_off_form.employee }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ time_off_form.start_date.id_for_label }}" class="form-label">Start Date</label>
+                            {{ time_off_form.start_date }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ time_off_form.end_date.id_for_label }}" class="form-label">End Date</label>
+                            {{ time_off_form.end_date }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ time_off_form.status.id_for_label }}" class="form-label">Status</label>
+                            {{ time_off_form.status }}
+                        </div>
+                        <div class="col-12">
+                            <label for="{{ time_off_form.reason.id_for_label }}" class="form-label">Reason</label>
+                            {{ time_off_form.reason }}
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Add Time Off
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Time Off List -->
+                {% if time_off_requests %}
+                <div class="list-group list-group-flush">
+                    {% for time_off in time_off_requests %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ time_off.employee.name }}</h6>
+                            <span class="badge 
+                                {% if time_off.status == 'approved' %}bg-success
+                                {% elif time_off.status == 'rejected' %}bg-danger
+                                {% else %}bg-warning{% endif %}">
+                                {{ time_off.get_status_display }}
+                            </span>
+                        </div>
+                        <p class="mb-1">{{ time_off.start_date }} to {{ time_off.end_date }}</p>
+                        <small class="text-muted">{{ time_off.reason }}</small>
+                        {% if time_off.approved_by %}
+                        <br>
+                        <small class="text-muted">Approved by: {{ time_off.approved_by.get_full_name }}</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center">No time off requests for this period</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Affected Schedules -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-event"></i>
+                    Affected Schedules
+                    <span class="badge bg-warning ms-2">{{ affected_schedules.count }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if affected_schedules %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for schedule in affected_schedules %}
+                            <tr>
+                                <td>
+                                    <strong>{{ schedule.employee.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ schedule.employee.employee_id }}</small>
+                                </td>
+                                <td>{{ schedule.date }}</td>
+                                <td>
+                                    {% if schedule.is_off %}
+                                    <span class="badge bg-danger">Day Off</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Working</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if schedule.is_off %}
+                                    <span class="text-muted">Time Off</span>
+                                    {% else %}
+                                    {{ schedule.start_time }} - {{ schedule.end_time }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">No affected schedules</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Swap History -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i>
+                    Swap History for {{ timetable }}
+                    <span class="badge bg-info ms-2">{{ swap_history.count }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if swap_history %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Swap Date</th>
+                                <th>Employees</th>
+                                <th>Original Schedule</th>
+                                <th>Target Schedule</th>
+                                <th>Approved By</th>
+                                <th>Completed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for history in swap_history %}
+                            <tr>
+                                <td>
+                                    <strong>{{ history.swap_date }}</strong>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <span>{{ history.original_employee.name }}</span>
+                                        <small class="text-muted">⇄ {{ history.target_employee.name }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if history.original_schedule_data %}
+                                    <small>
+                                        {{ history.original_schedule_data.start_time }} - 
+                                        {{ history.original_schedule_data.end_time }}
+                                    </small>
+                                    {% else %}
+                                    <span class="text-muted">No data</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if history.target_schedule_data %}
+                                    <small>
+                                        {{ history.target_schedule_data.start_time }} - 
+                                        {{ history.target_schedule_data.end_time }}
+                                    </small>
+                                    {% else %}
+                                    <span class="text-muted">No data</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if history.approved_by %}
+                                    {{ history.approved_by.get_full_name }}
+                                    {% else %}
+                                    <span class="text-muted">System</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ history.created_at|date:"M d, Y H:i" }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-arrow-left-right fs-1 text-muted"></i>
+                    <h5 class="text-muted mt-3">No swap history</h5>
+                    <p class="text-muted">No shift swaps have been completed for this timetable period.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timetable Summary -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>{{ time_off_requests.count }}</h3>
+                <p class="mb-0">Time Off Requests</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h3>{{ affected_schedules.count }}</h3>
+                <p class="mb-0">Affected Schedules</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3>{{ swap_history.count }}</h3>
+                <p class="mb-0">Completed Swaps</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-select, .form-control {
+    border-radius: 0.375rem;
+}
+
+.list-group-item {
+    border: 1px solid rgba(0,0,0,.125);
+    margin-bottom: 0.5rem;
+    border-radius: 0.375rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize date pickers if needed
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => {
+        input.classList.add('form-control');
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Admin Shift Swaps - Employee Timetable System{% endblock %}
+{% block page_title %}Admin Shift Swap Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-arrow-left-right"></i> All Shift Swap Requests
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if swap_requests %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Requester</th>
+                                <th>Requested To</th>
+                                <th>Date</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for swap in swap_requests %}
+                            <tr>
+                                <td>
+                                    {{ swap.requester.name }}
+                                    <br>
+                                    <small class="text-muted">{{ swap.requester.get_department_display }}</small>
+                                </td>
+                                <td>
+                                    {{ swap.requested_to.name }}
+                                    <br>
+                                    <small class="text-muted">{{ swap.requested_to.get_department_display }}</small>
+                                </td>
+                                <td>{{ swap.requested_date|date:"M j, Y" }}</td>
+                                <td>
+                                    <small>{{ swap.reason|truncatewords:10 }}</small>
+                                </td>
+                                <td>
+                                    {% if swap.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% elif swap.status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ swap.created_at|date:"M j, Y" }}</td>
+                                <td>
+                                    {% if swap.status == 'pending' %}
+                                    <div class="btn-group btn-group-sm">
+                                        <form method="post" action="{% url 'approve_swap_request' swap.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="bi bi-check"></i> Approve
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{% url 'reject_swap_request' swap.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="bi bi-x"></i> Reject
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">Completed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if swap_requests.has_other_pages %}
+                <nav aria-label="Swap requests pagination">
+                    <ul class="pagination justify-content-center mt-4">
+                        {% if swap_requests.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ swap_requests.previous_page_number }}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in swap_requests.paginator.page_range %}
+                            {% if swap_requests.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if swap_requests.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ swap_requests.next_page_number }}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-arrow-left-right display-1 text-muted"></i>
+                    <h4 class="text-muted mt-3">No shift swap requests</h4>
+                    <p class="text-muted">
+                        There are no shift swap requests to manage.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block title %}Approve Shift Swap Request{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exchange-alt me-2"></i>
+                        Approve Shift Swap Request
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- Swap Request Details -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">Swap Request Details</h5>
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>From:</strong> {{ swap_request.requester.name }}<br>
+                                <strong>To:</strong> {{ swap_request.requested_to.name }}<br>
+                                <strong>Requested Date:</strong> {{ swap_request.requested_date|date:"F d, Y" }}<br>
+                                <strong>Status:</strong> 
+                                <span class="badge bg-warning text-dark">{{ swap_request.get_status_display }}</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Reason:</strong><br>
+                                <p class="mb-0">{{ swap_request.reason|default:"No reason provided" }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Comparison -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <strong>Your Schedule</strong>
+                                </div>
+                                <div class="card-body">
+                                    {% if target_schedule %}
+                                        <p><strong>Date:</strong> {{ target_schedule.date|date:"F d, Y" }}</p>
+                                        <p><strong>Time:</strong> {{ target_schedule.start_time|time:"H:i" }} - {{ target_schedule.end_time|time:"H:i" }}</p>
+                                        <p><strong>Lunch:</strong> {{ target_schedule.lunch_time|time:"H:i" }}</p>
+                                        {% if target_schedule.is_off %}
+                                            <span class="badge bg-danger">Day Off</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="text-muted">No schedule found for this date.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <strong>Requester's Schedule</strong>
+                                </div>
+                                <div class="card-body">
+                                    {% if swap_request.original_schedule %}
+                                        <p><strong>Date:</strong> {{ swap_request.original_schedule.date|date:"F d, Y" }}</p>
+                                        <p><strong>Time:</strong> {{ swap_request.original_schedule.start_time|time:"H:i" }} - {{ swap_request.original_schedule.end_time|time:"H:i" }}</p>
+                                        <p><strong>Lunch:</strong> {{ swap_request.original_schedule.lunch_time|time:"H:i" }}</p>
+                                        {% if swap_request.original_schedule.is_off %}
+                                            <span class="badge bg-danger">Day Off</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="text-muted">No schedule found for this date.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="alert alert-warning">
+                        <strong>Note:</strong> Approving this request will swap your schedules for the selected date.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'my_swap_requests' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to My Requests
+                            </a>
+                            <div>
+                                <button type="submit" name="action" value="reject" class="btn btn-danger me-2">
+                                    <i class="fas fa-times me-2"></i>Reject Request
+                                </button>
+                                <button type="submit" name="action" value="approve" class="btn btn-success">
+                                    <i class="fas fa-check me-2"></i>Approve Request
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add confirmation for actions
+    document.addEventListener('DOMContentLoaded', function() {
+        const approveBtn = document.querySelector('button[value="approve"]');
+        const rejectBtn = document.querySelector('button[value="reject"]');
+        
+        if (approveBtn) {
+            approveBtn.addEventListener('click', function(e) {
+                if (!confirm('Are you sure you want to approve this shift swap? This action cannot be undone.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+        
+        if (rejectBtn) {
+            rejectBtn.addEventListener('click', function(e) {
+                if (!confirm('Are you sure you want to reject this shift swap request?')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,274 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block title %}Manager Calendar - Timetable System{% endblock %}
+
+{% block page_title %}Manager Calendar View - {{ current_month_name }} {{ selected_year }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    {% if show_department_filter %}
+    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-filter"></i> Department: {{ selected_department|title }}
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="?department=inbound&month={{ selected_month }}&year={{ selected_year }}">Inbound</a></li>
+        <li><a class="dropdown-item" href="?department=outbound&month={{ selected_month }}&year={{ selected_year }}">Outbound</a></li>
+    </ul>
+    {% endif %}
+    
+    <div class="btn-group">
+        <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-calendar"></i> {{ current_month_name }} {{ selected_year }}
+        </button>
+        <ul class="dropdown-menu">
+            <li><h6 class="dropdown-header">Available Timetables</h6></li>
+            {% for timetable in available_timetables %}
+            <li>
+                <a class="dropdown-item" href="?month={{ timetable.month }}&year={{ timetable.year }}&department={{ selected_department }}">
+                    {{ timetable.get_month_display }} {{ timetable.year }}
+                    {% if timetable.month == selected_month and timetable.year == selected_year %}
+                    <i class="bi bi-check text-success"></i>
+                    {% endif %}
+                </a>
+            </li>
+            {% empty %}
+            <li><a class="dropdown-item text-muted" href="#">No timetables available</a></li>
+            {% endfor %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item text-success" href="{% url 'generate_timetable' %}">
+                    <i class="bi bi-plus-circle"></i> Generate New Timetable
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <a href="{% url 'manager_timetable_list' %}" class="btn btn-sm btn-outline-info">
+        <i class="bi bi-table"></i> Table View
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<style>
+/* ... existing styles ... */
+.timetable-info {
+    background: #e9ecef;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Timetable Info -->
+<div class="timetable-info">
+    <div class="row">
+        <div class="col-md-6">
+            <strong>Timetable:</strong> {{ timetable.get_month_display }} {{ timetable.year }}
+        </div>
+        <div class="col-md-6">
+            <strong>Created:</strong> {{ timetable.created_at|date:"M d, Y" }} 
+            {% if timetable.created_by %}
+            by {{ timetable.created_by.get_full_name|default:timetable.created_by.username }}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Rest of the template remains the same -->
+<div class="calendar-legend">
+    <h6 class="mb-3"><i class="bi bi-info-circle"></i> Calendar Legend</h6>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #28a745;"></div>
+                <span>Early Shift (8:00 AM)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #17a2b8;"></div>
+                <span>Morning Shift (9:00 AM)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ffc107;"></div>
+                <span>Mid Shift (10:00 AM)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #fd7e14;"></div>
+                <span>Late Shift (11:00 AM)</span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #6c757d;"></div>
+                <span>Custom Shift</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #dc3545;"></div>
+                <span>Day Off</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #20c997;"></div>
+                <span>Swapped Shift</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #6f42c1;"></div>
+                <span>Swapped Day Off</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Container -->
+<div class="card">
+    <div class="card-body">
+        <div id="calendar"></div>
+    </div>
+</div>
+
+<!-- Event Modal -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="eventModalTitle">Schedule Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="eventModalBody">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendarData = {{ calendar_data|safe }};
+    
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,dayGridWeek,listMonth'
+        },
+        views: {
+            dayGridMonth: {
+                titleFormat: { year: 'numeric', month: 'long' }
+            },
+            dayGridWeek: {
+                titleFormat: { year: 'numeric', month: 'short', day: 'numeric' }
+            },
+            listMonth: {
+                titleFormat: { year: 'numeric', month: 'long' }
+            }
+        },
+        events: calendarData,
+        eventClick: function(info) {
+            var event = info.event;
+            var extendedProps = event.extendedProps;
+            
+            // Build modal content
+            var modalContent = `
+                <div class="event-details">
+                    <div class="event-employee mb-2">
+                        <i class="bi bi-person"></i> ${extendedProps.employee}
+                        <small class="text-muted d-block">ID: ${extendedProps.employee_id}</small>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Department:</strong> ${extendedProps.department.toUpperCase()}
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Date:</strong> ${event.start.toLocaleDateString()}
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Status:</strong> 
+                        <span class="badge ${extendedProps.is_off ? 'bg-danger' : 'bg-success'}">
+                            ${extendedProps.status}
+                        </span>
+                    </div>
+            `;
+            
+            if (!extendedProps.is_off) {
+                modalContent += `
+                    <div class="mb-2">
+                        <strong>Shift:</strong> ${extendedProps.shift_type}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Time:</strong> ${extendedProps.start_time} - ${extendedProps.end_time}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Lunch:</strong> ${extendedProps.lunch_time}
+                    </div>
+                `;
+            }
+            
+            if (extendedProps.swap_info) {
+                modalContent += `
+                    <div class="mt-3 p-2 bg-warning bg-opacity-10 rounded">
+                        <strong><i class="bi bi-arrow-left-right"></i> Shift Swap Information:</strong><br>
+                        <small>Swapped with: ${extendedProps.swap_info.other_employee}</small><br>
+                        <small>Approved by: ${extendedProps.swap_info.approved_by}</small>
+                    </div>
+                `;
+            }
+            
+            modalContent += `</div>`;
+            
+            // Update modal and show
+            document.getElementById('eventModalTitle').textContent = `Schedule: ${extendedProps.employee}`;
+            document.getElementById('eventModalBody').innerHTML = modalContent;
+            var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+            modal.show();
+            
+            info.jsEvent.preventDefault();
+        },
+        eventContent: function(arg) {
+            // Custom event content
+            var extendedProps = arg.event.extendedProps;
+            var title = arg.event.title;
+            
+            // Create custom HTML for event
+            var eventEl = document.createElement('div');
+            eventEl.className = 'fc-event-main-frame';
+            eventEl.innerHTML = `
+                <div class="fc-event-time">${extendedProps.is_off ? '' : extendedProps.start_time}</div>
+                <div class="fc-event-title">${title}</div>
+            `;
+            
+            return { domNodes: [eventEl] };
+        },
+        eventDisplay: 'block',
+        height: 'auto',
+        navLinks: true,
+        dayMaxEvents: true,
+        nowIndicator: true,
+        businessHours: {
+            daysOfWeek: [1, 2, 3, 4, 5], // Monday - Friday
+            startTime: '08:00',
+            endTime: '20:00',
+        }
+    });
+    
+    calendar.render();
+    
+    // Add today button functionality
+    document.querySelector('.fc-today-button').addEventListener('click', function() {
+        calendar.today();
+    });
+});
+</script>
+{% endblock %}

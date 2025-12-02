@@ -1,0 +1,367 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block title %}Manager Dashboard - Timetable System{% endblock %}
+
+{% block page_title %}Manager Dashboard{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-filter"></i> Department: {{ manager.get_department_access_display }}
+    </button>
+    {% if manager.department_access == 'all' %}
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="?department=all">All Departments</a></li>
+        <li><a class="dropdown-item" href="?department=inbound">Inbound Only</a></li>
+        <li><a class="dropdown-item" href="?department=outbound">Outbound Only</a></li>
+    </ul>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Statistics Cards -->
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ inbound_count|default:0 }}</h4>
+                        <p class="card-text">Inbound Employees</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-people fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ outbound_count|default:0 }}</h4>
+                        <p class="card-text">Outbound Employees</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-people fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ pending_swaps.count }}</h4>
+                        <p class="card-text">Pending Swaps</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-arrow-left-right fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ current_timetables.count }}</h4>
+                        <p class="card-text">Current Timetables</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-calendar-check fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Employees Alert -->
+{% if new_employees_without_schedules %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>{{ new_employees_without_schedules|length }} new employee(s)</strong> need to be added to timetables.
+            </div>
+            <div>
+                <a href="{% url 'add_employees_to_timetables' %}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-calendar-plus"></i> Add to Timetables
+                </a>
+                <a href="{% url 'employee_list' %}" class="btn btn-outline-warning btn-sm">
+                    <i class="bi bi-people"></i> View Employees
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Pending Swap Requests -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history text-warning"></i>
+                    Pending Swap Requests
+                </h5>
+                <span class="badge bg-warning">{{ pending_swaps.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if pending_swaps %}
+                <div class="list-group list-group-flush">
+                    {% for swap in pending_swaps|slice:":5" %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ swap.requester.name }}</h6>
+                            <small class="text-muted">{{ swap.created_at|timesince }} ago</small>
+                        </div>
+                        <p class="mb-1">Wants to swap with {{ swap.requested_to.name }}</p>
+                        <small class="text-muted">Date: {{ swap.requested_date|date:"M j, Y" }}</small>
+                        <div class="mt-2">
+                            <a href="{% url 'manager_approve_swap' swap.id %}" class="btn btn-sm btn-success">
+                                <i class="bi bi-check-lg"></i> Review
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if pending_swaps.count > 5 %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'manager_swap_approval' %}" class="btn btn-outline-primary btn-sm">
+                        View All {{ pending_swaps.count }} Requests
+                    </a>
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted text-center">No pending swap requests</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Employees & New Hires -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-people text-primary"></i>
+                    Department Employees
+                </h5>
+                <span class="badge bg-primary">{{ employees.count }}</span>
+            </div>
+            <div class="card-body">
+                <!-- New Employees Section -->
+                {% if new_employees %}
+                <div class="mb-3 p-3 bg-light rounded">
+                    <h6 class="text-success mb-2">
+                        <i class="bi bi-person-plus"></i> New Hires (Last 30 days)
+                    </h6>
+                    {% for employee in new_employees|slice:":3" %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <strong>{{ employee.name }}</strong>
+                            <br>
+                            <small class="text-muted">Started {{ employee.start_date|date:"M j" }}</small>
+                        </div>
+                        <a href="{% url 'add_employee_to_timetable' employee.id %}" 
+                           class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-calendar-plus"></i> Schedule
+                        </a>
+                    </div>
+                    {% endfor %}
+                    {% if new_employees.count > 3 %}
+                    <div class="text-center">
+                        <a href="{% url 'employee_list' %}?new=true" class="btn btn-sm btn-outline-primary">
+                            View All {{ new_employees.count }} New Employees
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Regular Employees -->
+                {% if employees %}
+                <div class="list-group list-group-flush">
+                    {% for employee in employees|slice:":5" %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ employee.name }}</h6>
+                                <small class="text-muted">{{ employee.employee_id }} • {{ employee.get_department_display }}</small>
+                            </div>
+                            <div>
+                                <span class="badge {% if employee.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ employee.position|default:"Employee" }}
+                                </span>
+                                {% if employee.dailyschedule_set.count == 0 %}
+                                <span class="badge bg-warning ms-1" title="No schedules">
+                                    <i class="bi bi-exclamation"></i>
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if employees.count > 5 %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'manager_employees' %}" class="btn btn-outline-primary btn-sm">
+                        View All {{ employees.count }} Employees
+                    </a>
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted text-center">No employees in your department</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Quick Actions -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% if manager.can_generate_timetables %}
+                    <div class="col-md-3">
+                        <a href="{% url 'generate_timetable' %}" class="btn btn-outline-primary w-100 h-100 py-3">
+                            <i class="bi bi-plus-circle fs-1 d-block mb-2"></i>
+                            Generate Timetable
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="col-md-3">
+                        <a href="{% url 'manager_employees' %}" class="btn btn-outline-success w-100 h-100 py-3">
+                            <i class="bi bi-people fs-1 d-block mb-2"></i>
+                            View Employees
+                        </a>
+                    </div>
+                    
+                    {% if manager.can_approve_swaps %}
+                    <div class="col-md-3">
+                        <a href="{% url 'manager_swap_approval' %}" class="btn btn-outline-warning w-100 h-100 py-3">
+                            <i class="bi bi-check-circle fs-1 d-block mb-2"></i>
+                            Approve Swaps
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <!-- New Action: Add Employees to Timetables -->
+                    {% if manager.can_manage_employees %}
+                    <div class="col-md-3">
+                        <a href="{% url 'add_employees_to_timetables' %}" class="btn btn-outline-info w-100 h-100 py-3">
+                            <i class="bi bi-calendar-plus fs-1 d-block mb-2"></i>
+                            Add to Timetables
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if manager.department_access == 'all' or manager.department_access == 'inbound' %}
+                    <div class="col-md-3">
+                        <a href="{% url 'department_schedule' 'inbound' %}" class="btn btn-outline-info w-100 h-100 py-3">
+                            <i class="bi bi-box-arrow-in-down fs-1 d-block mb-2"></i>
+                            Inbound Schedule
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if manager.department_access == 'all' or manager.department_access == 'outbound' %}
+                    <div class="col-md-3">
+                        <a href="{% url 'department_schedule' 'outbound' %}" class="btn btn-outline-info w-100 h-100 py-3">
+                            <i class="bi bi-box-arrow-up fs-1 d-block mb-2"></i>
+                            Outbound Schedule
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <!-- New Action: Manager Calendar View -->
+                    <div class="col-md-3">
+                       <a href="{% url 'manager_calendar' %}" class="btn btn-outline-secondary w-100 h-100 py-3">
+                            <i class="bi bi-calendar-week fs-1 d-block mb-2"></i>
+                            Calendar View
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current Month Overview -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-month"></i>
+                    {{ today|date:"F Y" }} Overview
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-2">
+                        <div class="border rounded p-3">
+                            <h3 class="text-primary">{{ employees.count }}</h3>
+                            <p class="mb-0 text-muted">Total Employees</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3">
+                            <h3 class="text-success">{{ current_timetables.count }}</h3>
+                            <p class="mb-0 text-muted">Active Timetables</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3">
+                            <h3 class="text-warning">{{ pending_swaps.count }}</h3>
+                            <p class="mb-0 text-muted">Pending Actions</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3">
+                            <h3 class="text-info">{% now "d" %}</h3>
+                            <p class="mb-0 text-muted">Today's Date</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3">
+                            <h3 class="text-success">{{ new_employees.count }}</h3>
+                            <p class="mb-0 text-muted">New Hires</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3">
+                            <h3 class="text-warning">{{ unscheduled_employees }}</h3>
+                            <p class="mb-0 text-muted">Need Schedules</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

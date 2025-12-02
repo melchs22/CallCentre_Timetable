@@ -1,0 +1,123 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}{{ department_display }} Schedule - Employee Timetable System{% endblock %}
+{% block page_title %}{{ department_display }} Department Schedule{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-filter"></i> Filter
+    </button>
+    <div class="dropdown-menu">
+        <form method="get" class="p-3">
+            <div class="mb-3">
+                <label for="month" class="form-label">Month</label>
+                <select name="month" id="month" class="form-select">
+                    {% for i in "123456789101112" %}
+                    <option value="{{ i }}" {% if i|add:0 == selected_month %}selected{% endif %}>
+                        {{ i|date:"F" }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="year" class="form-label">Year</label>
+                <select name="year" id="year" class="form-select">
+                    {% for i in "202420252026" %}
+                    <option value="{{ i }}" {% if i|add:0 == selected_year %}selected{% endif %}>
+                        {{ i }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Apply Filter</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Department Summary -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h4 class="text-primary">{{ employees.count }}</h4>
+                        <small class="text-muted">Total Employees</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h4 class="text-success">{{ selected_month }}</h4>
+                        <small class="text-muted">Current Month</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h4 class="text-info">{{ selected_year }}</h4>
+                        <small class="text-muted">Year</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Department Schedule -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-people"></i> {{ department_display }} Schedule for {{ selected_month|date:"F" }} {{ selected_year }}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if schedules_by_date %}
+                    {% for date_str, schedules in schedules_by_date.items %}
+                    <div class="schedule-day mb-4 p-3 border rounded">
+                        <h6 class="mb-3">{{ schedules.0.date|date:"l, F d, Y" }}</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Start Time</th>
+                                        <th>End Time</th>
+                                        <th>Lunch Time</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for schedule in schedules %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ schedule.employee.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ schedule.employee.employee_id }}</small>
+                                        </td>
+                                        <td>{{ schedule.start_time|time:"H:i" }}</td>
+                                        <td>{{ schedule.end_time|time:"H:i" }}</td>
+                                        <td>{{ schedule.lunch_time|time:"H:i" }}</td>
+                                        <td>
+                                            {% if schedule.is_off %}
+                                            <span class="badge bg-danger">Day Off</span>
+                                            {% else %}
+                                            <span class="badge bg-success">Working</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x display-1 text-muted"></i>
+                    <h4 class="text-muted mt-3">No schedules found</h4>
+                    <p class="text-muted">
+                        No schedules found for {{ department_display }} department in the selected period.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

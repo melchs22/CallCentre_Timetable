@@ -1,0 +1,19 @@
+# Ignore virtual environment
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# VSCode
+.vscode/
+
+# Windows
+Thumbs.db
+.DS_Store
+.env

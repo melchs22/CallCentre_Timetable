@@ -1,0 +1,233 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}My Shift Swaps - Employee Timetable System{% endblock %}
+{% block page_title %}My Shift Swap Requests{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestSwapModal">
+    <i class="bi bi-arrow-left-right"></i> Request Swap
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Swap Requests Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h4>{{ swap_requests.paginator.count }}</h4>
+                        <small>Total Requests</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body text-center">
+                        <h4>{{ pending_count }}</h4>
+                        <small>Pending</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h4>{{ approved_count }}</h4>
+                        <small>Approved</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h4>{{ rejected_count }}</h4>
+                        <small>Rejected</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Swap Requests Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-arrow-left-right"></i> My Shift Swap Requests
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if swap_requests %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Employee</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Date Requested</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for swap in swap_requests %}
+                            <tr>
+                                <td>
+                                    <strong>{{ swap.requested_date|date:"M j, Y" }}</strong>
+                                </td>
+                                <td>
+                                    {% if swap.requester == employee %}
+                                    <span class="badge bg-info">Sent</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Received</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if swap.requester == employee %}
+                                    To: {{ swap.requested_to.name }}
+                                    {% else %}
+                                    From: {{ swap.requester.name }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ swap.reason|truncatewords:10 }}</small>
+                                </td>
+                                <td>
+                                    {% if swap.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% elif swap.status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ swap.created_at|date:"M j, Y H:i" }}</td>
+                                <td>
+                                    {% if swap.requester != employee and swap.status == 'pending' %}
+                                    <div class="btn-group btn-group-sm">
+                                        <form method="post" action="{% url 'approve_swap_request' swap.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="bi bi-check"></i>
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{% url 'reject_swap_request' swap.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% elif swap.status != 'pending' %}
+                                    <span class="text-muted">Completed</span>
+                                    {% else %}
+                                    <span class="text-muted">Waiting</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if swap_requests.has_other_pages %}
+                <nav aria-label="Swap requests pagination">
+                    <ul class="pagination justify-content-center mt-4">
+                        {% if swap_requests.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ swap_requests.previous_page_number }}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in swap_requests.paginator.page_range %}
+                            {% if swap_requests.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if swap_requests.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ swap_requests.next_page_number }}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-arrow-left-right display-1 text-muted"></i>
+                    <h4 class="text-muted mt-3">No swap requests</h4>
+                    <p class="text-muted">
+                        You haven't made or received any shift swap requests yet.
+                    </p>
+                    <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#requestSwapModal">
+                        <i class="bi bi-arrow-left-right"></i> Request Your First Swap
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Swap Modal -->
+<div class="modal fade" id="requestSwapModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Request Shift Swap</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_requested_to" class="form-label">Swap With</label>
+                        {{ form.requested_to }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_requested_date" class="form-label">Date to Swap</label>
+                        {{ form.requested_date }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_reason" class="form-label">Reason for Swap</label>
+                        {{ form.reason }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set today's date as default for swap request
+    const dateField = document.querySelector('#id_requested_date');
+    if (dateField && !dateField.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateField.value = today;
+    }
+    
+    // Get URL parameters for pre-filling date
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateParam = urlParams.get('date');
+    if (dateParam && dateField) {
+        dateField.value = dateParam;
+    }
+});
+</script>
+{% endblock %}

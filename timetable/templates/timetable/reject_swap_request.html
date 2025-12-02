@@ -1,0 +1,48 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block title %}Reject Shift Swap Request{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-times me-2"></i>
+                        Reject Shift Swap Request
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h5 class="alert-heading">Are you sure you want to reject this swap request?</h5>
+                        <hr>
+                        <p><strong>From:</strong> {{ swap_request.requester.name }}</p>
+                        <p><strong>Date:</strong> {{ swap_request.requested_date|date:"F d, Y" }}</p>
+                        <p><strong>Reason:</strong> {{ swap_request.reason|default:"No reason provided" }}</p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="rejection_reason" class="form-label">Optional Rejection Reason:</label>
+                            <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="3" 
+                                      placeholder="You can provide a reason for rejection (optional)"></textarea>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'my_swap_requests' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-times me-2"></i>Confirm Rejection
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

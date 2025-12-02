@@ -1,0 +1,124 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Timetables - Employee Timetable System{% endblock %}
+{% block page_title %}Timetable Management{% endblock %}
+
+{% block page_actions %}
+{% if can_generate_timetable %}
+<a href="{% url 'generate_timetable' %}" class="btn btn-primary">
+    <i class="bi bi-plus-circle"></i> Generate New Timetable
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-check"></i> Available Timetables
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if timetables %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Month</th>
+                                <th>Year</th>
+                                <th>Created By</th>
+                                <th>Created At</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for timetable in timetables %}
+                            <tr>
+                                <td>
+                                    <strong>{{ timetable.get_month_display }}</strong>
+                                </td>
+                                <td>{{ timetable.year }}</td>
+                                <td>
+                                    {% if timetable.created_by %}
+                                    {{ timetable.created_by.username }}
+                                    {% else %}
+                                    <span class="text-muted">System</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ timetable.created_at|date:"M j, Y H:i" }}</td>
+                                <td>
+                                    {% if timetable.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'timetable_view' timetable.id %}" class="btn btn-outline-primary">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                        <!-- REMOVED adjust_timetable LINK -->
+                                        <a href="{% url 'lunch_schedule' timetable.id %}" class="btn btn-outline-success">
+                                            <i class="bi bi-egg-fried"></i> Lunch
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if timetables.has_other_pages %}
+                <nav aria-label="Timetable pagination">
+                    <ul class="pagination justify-content-center mt-4">
+                        {% if timetables.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ timetables.previous_page_number }}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in timetables.paginator.page_range %}
+                            {% if timetables.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if timetables.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ timetables.next_page_number }}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x display-1 text-muted"></i>
+                    <h4 class="text-muted mt-3">No timetables found</h4>
+                    <p class="text-muted">
+                        No timetables have been generated yet.
+                    </p>
+                    {% if can_generate_timetable %}
+                    <a href="{% url 'generate_timetable' %}" class="btn btn-primary mt-3">
+                        <i class="bi bi-plus-circle"></i> Generate First Timetable
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

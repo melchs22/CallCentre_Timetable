@@ -1,0 +1,217 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Dashboard - Employee Timetable System{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'my_schedule' %}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-calendar3"></i> My Schedule
+    </a>
+    <a href="{% url 'my_swap_requests' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left-right"></i> Shift Swaps
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Welcome Card -->
+    <div class="col-12 mb-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h4 class="card-title">
+                            Welcome back, {{ user.first_name|default:user.username }}!
+                        </h4>
+                        <p class="card-text">
+                            {% if employee %}
+                            You are logged in as {{ employee.name }} ({{ employee.position }})
+                            {% else %}
+                            Employee profile not found. Please contact administrator.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-person-circle display-4 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Quick Stats -->
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Today's Shift</h6>
+                        {% if current_schedules %}
+                            {% for schedule in current_schedules %}
+                                {% if schedule.date == today %}
+                                <h4 class="text-success">{{ schedule.start_time|time:"H:i" }} - {{ schedule.end_time|time:"H:i" }}</h4>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                        <h4 class="text-muted">No shift</h4>
+                        {% endif %}
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-clock display-6 text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Pending Requests</h6>
+                        <h4 class="text-warning">{{ pending_swaps_received.count }}</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-bell display-6 text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">My Requests</h6>
+                        <h4 class="text-info">{{ pending_swaps_sent.count }}</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-arrow-left-right display-6 text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">This Month</h6>
+                        <h4 class="text-success">{{ current_schedules|length }} shifts</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-calendar-month display-6 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Upcoming Shifts -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar3"></i> Upcoming Shifts
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if current_schedules %}
+                <div class="list-group list-group-flush">
+                    {% for schedule in current_schedules %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ schedule.date|date:"D, M j" }}</h6>
+                            <small class="text-muted">{{ schedule.start_time|time:"H:i" }} - {{ schedule.end_time|time:"H:i" }}</small>
+                        </div>
+                        <p class="mb-1">Lunch: {{ schedule.lunch_time|time:"H:i" }}</p>
+                        {% if schedule.is_off %}
+                        <span class="badge bg-danger">Day Off</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No upcoming shifts scheduled.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Swap Requests -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-arrow-left-right"></i> Pending Swap Requests
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if pending_swaps_received %}
+                <div class="list-group list-group-flush">
+                    {% for swap in pending_swaps_received %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ swap.requester.name }}</h6>
+                            <span class="badge bg-warning">Pending</span>
+                        </div>
+                        <p class="mb-1">Date: {{ swap.requested_date|date:"M j, Y" }}</p>
+                        <small class="text-muted">Reason: {{ swap.reason|truncatewords:10 }}</small>
+                        <div class="mt-2">
+                            <a href="{% url 'approve_swap_request' swap.id %}" class="btn btn-sm btn-success">
+                                <i class="bi bi-check"></i> Approve
+                            </a>
+                            <a href="{% url 'reject_swap_request' swap.id %}" class="btn btn-sm btn-danger">
+                                <i class="bi bi-x"></i> Reject
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No pending swap requests.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+{% if can_manage_all or is_staff %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="btn-group" role="group">
+                    <a href="{% url 'generate_timetable' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Generate Timetable
+                    </a>
+                    <a href="{% url 'employee_list' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-people"></i> Manage Employees
+                    </a>
+                    <a href="{% url 'admin_shift_swaps' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left-right"></i> Manage Swaps
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

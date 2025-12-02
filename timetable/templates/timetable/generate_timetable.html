@@ -1,0 +1,216 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Generate Timetable - Employee Timetable System{% endblock %}
+{% block page_title %}Generate New Timetable{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'timetable_list' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Back to Timetables
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <!-- Generation Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-plus-circle"></i> Generate New Timetable
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_month" class="form-label">Month</label>
+                        {{ form.month }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_year" class="form-label">Year</label>
+                        {{ form.year }}
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-gear"></i> Generate Timetable
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Missing Employees Alert -->
+        {% if employees_without_schedules %}
+        <div class="card mt-4 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Employees Without Schedules
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    <strong>{{ employees_without_schedules|length }} employees</strong> don't have schedules in recent timetables.
+                </p>
+                <div class="list-group list-group-flush">
+                    {% for employee in employees_without_schedules %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ employee.name }}</strong>
+                            <br>
+                            <small class="text-muted">{{ employee.get_department_display }} • Started {{ employee.start_date|date:"M j, Y" }}</small>
+                        </div>
+                        <a href="{% url 'add_employee_to_timetable' employee.id %}" 
+                           class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-calendar-plus"></i> Add
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-3">
+                    <a href="{% url 'employee_list' %}" class="btn btn-warning w-100">
+                        <i class="bi bi-people"></i> Manage All Employees
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-6">
+        <!-- Recent Timetables -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i> Recent Timetables
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_timetables %}
+                <div class="list-group list-group-flush">
+                    {% for timetable in recent_timetables %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ timetable.get_month_display }} {{ timetable.year }}</h6>
+                            <span class="badge {% if timetable.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if timetable.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                        <p class="mb-1">
+                            <small class="text-muted">
+                                Created: {{ timetable.created_at|date:"M j, Y" }}
+                                {% if timetable.last_updated and timetable.last_updated != timetable.created_at %}
+                                <br>Updated: {{ timetable.last_updated|date:"M j, Y" }}
+                                {% endif %}
+                            </small>
+                        </p>
+                        <div class="btn-group btn-group-sm mt-2">
+                            <a href="{% url 'timetable_view' timetable.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            {% if perms.timetable.change_timetable %}
+                            <a href="{% url 'adjust_timetable' timetable.id %}" class="btn btn-outline-warning btn-sm">
+                                <i class="bi bi-pencil"></i> Adjust
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="bi bi-calendar-x display-6 text-muted"></i>
+                    <p class="text-muted mt-2">No timetables generated yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Information Card -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> Generation Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check text-success"></i> Working hours: 8:00 AM - 5:00 PM</li>
+                    <li><i class="bi bi-check text-success"></i> Max start time: 11:00 AM</li>
+                    <li><i class="bi bi-check text-success"></i> 1-hour lunch break included</li>
+                    <li><i class="bi bi-check text-success"></i> Monday to Saturday schedule</li>
+                    <li><i class="bi bi-check text-success"></i> Automatic lunch scheduling</li>
+                    <li><i class="bi bi-check text-success"></i> Weekly rotation for fair distribution</li>
+                    <li><i class="bi bi-check text-success"></i> Automatic new employee integration</li>
+                </ul>
+                
+                <!-- Employee Count -->
+                {% if employee_count %}
+                <div class="mt-3 p-3 bg-light rounded">
+                    <h6 class="mb-2">Current Employee Distribution</h6>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <strong class="text-primary">{{ employee_count.inbound }}</strong>
+                            <br>
+                            <small class="text-muted">Inbound</small>
+                        </div>
+                        <div class="col-6">
+                            <strong class="text-info">{{ employee_count.outbound }}</strong>
+                            <br>
+                            <small class="text-muted">Outbound</small>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'employee_list' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-people"></i> Manage Employees
+                    </a>
+                    <a href="{% url 'add_employees_to_timetables' %}" class="btn btn-outline-success">
+                        <i class="bi bi-calendar-plus"></i> Add Employees to Timetables
+                    </a>
+                    {% if perms.timetable.manage_all %}
+                    <a href="{% url 'admin:timetable_timetable_changelist' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-gear"></i> Admin Management
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default month and year to next month
+    const monthSelect = document.getElementById('id_month');
+    const yearSelect = document.getElementById('id_year');
+    
+    if (monthSelect && !monthSelect.value) {
+        const nextMonth = new Date().getMonth() + 2; // +2 because months are 1-indexed in the form
+        if (nextMonth > 12) {
+            monthSelect.value = 1;
+        } else {
+            monthSelect.value = nextMonth;
+        }
+    }
+    
+    if (yearSelect && !yearSelect.value) {
+        const currentYear = new Date().getFullYear();
+        yearSelect.value = currentYear;
+    }
+});
+</script>
+{% endblock %}

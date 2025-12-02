@@ -1,0 +1,147 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block title %}Manager Timetables - Timetable System{% endblock %}
+
+{% block page_title %}Timetable Management{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    {% if manager.can_generate_timetables %}
+    <a href="{% url 'generate_timetable' %}" class="btn btn-sm btn-success">
+        <i class="bi bi-plus-circle"></i> Generate New Timetable
+    </a>
+    {% endif %}
+    <a href="{% url 'manager_calendar' %}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-calendar-week"></i> Calendar View
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-check"></i>
+                    Available Timetables
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if timetables %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Year</th>
+                                <th>Created By</th>
+                                <th>Created Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for timetable in timetables %}
+                            <tr {% if timetable.month == today.month and timetable.year == today.year %}class="table-info"{% endif %}>
+                                <td>
+                                    <strong>{{ timetable.get_month_display }}</strong>
+                                </td>
+                                <td>{{ timetable.year }}</td>
+                                <td>
+                                    {% if timetable.created_by %}
+                                        {{ timetable.created_by.get_full_name|default:timetable.created_by.username }}
+                                    {% else %}
+                                        <span class="text-muted">System</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ timetable.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <span class="badge {% if timetable.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if timetable.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'manager_timetable_view' timetable.id %}" 
+                                           class="btn btn-outline-primary" 
+                                           title="View Timetable">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                        <a href="{% url 'timetable_view' timetable.id %}" 
+                                           class="btn btn-outline-info" 
+                                           title="Detailed View">
+                                            <i class="bi bi-table"></i> Details
+                                        </a>
+                                        {% if timetable.month == today.month and timetable.year == today.year %}
+                                        <a href="{% url 'adjust_timetable' timetable.id %}" 
+                                           class="btn btn-outline-warning" 
+                                           title="Adjust Current Timetable">
+                                            <i class="bi bi-pencil"></i> Adjust
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x fs-1 text-muted"></i>
+                    <h4 class="text-muted mt-3">No timetables found</h4>
+                    <p class="text-muted">There are no timetables available in the system.</p>
+                    {% if manager.can_generate_timetables %}
+                    <a href="{% url 'generate_timetable' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Generate First Timetable
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>{{ timetables.count }}</h3>
+                <p class="mb-0">Total Timetables</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3>{{ timetables.filter.is_active.count }}</h3>
+                <p class="mb-0">Active Timetables</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h3>
+                    {% with current=timetables.filter month=today.month year=today.year %}
+                    {{ current.count }}
+                    {% endwith %}
+                </h3>
+                <p class="mb-0">Current Month</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h3>{{ manager.get_department_access_display }}</h3>
+                <p class="mb-0">Department Access</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

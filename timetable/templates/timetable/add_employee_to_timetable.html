@@ -1,0 +1,295 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Add Employee to Timetables - Employee Timetable System{% endblock %}
+{% block page_title %}Add Employee to Timetables{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'employee_list' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Back to Employees
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-plus"></i> Add {{ employee.name }} to Timetables
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Employee Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Employee Details</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Name:</th>
+                                <td>{{ employee.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Employee ID:</th>
+                                <td><span class="badge bg-secondary">{{ employee.employee_id }}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Department:</th>
+                                <td><span class="badge {% if employee.department == 'inbound' %}bg-primary{% else %}bg-info{% endif %}">{{ employee.get_department_display }}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Start Date:</th>
+                                <td>{{ employee.start_date|date:"M j, Y" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Current Schedule Status</h6>
+                        {% if existing_schedules %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Employee already has {{ existing_schedules }} schedule(s) across timetables.
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            No schedules found for this employee.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Timetable Selection Form -->
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <h6>Select Timetables to Add Employee To:</h6>
+                        <p class="text-muted">
+                            Employee will be scheduled from their start date (<strong>{{ employee.start_date|date:"M j, Y" }}</strong>) 
+                            in the selected timetables.
+                        </p>
+                        
+                        {% if timetables %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" id="select-all" class="form-check-input">
+                                            <label for="select-all" class="form-check-label ms-2">Select All</label>
+                                        </th>
+                                        <th>Timetable</th>
+                                        <th>Status</th>
+                                        <th>Existing Schedules</th>
+                                        <th>Eligible Dates</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for timetable in timetables %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="timetables" value="{{ timetable.id }}" 
+                                                   class="form-check-input timetable-checkbox" 
+                                                   id="timetable-{{ timetable.id }}">
+                                        </td>
+                                        <td>
+                                            <label for="timetable-{{ timetable.id }}" class="form-check-label">
+                                                <strong>{{ timetable.get_month_display }} {{ timetable.year }}</strong>
+                                            </label>
+                                            <br>
+                                            <small class="text-muted">
+                                                Created: {{ timetable.created_at|date:"M j, Y" }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if timetable.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% with schedules_count=timetable.daily_schedules.count %}
+                                                {% if schedules_count > 0 %}
+                                                <span class="badge bg-info">{{ schedules_count }} schedule(s)</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">None</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                        <td>
+                                            {% if employee.start_date.year > timetable.year or employee.start_date.year == timetable.year and employee.start_date.month > timetable.month %}
+                                            <span class="badge bg-warning">Starts after month</span>
+                                            {% elif employee.start_date.year == timetable.year and employee.start_date.month == timetable.month and employee.start_date.day > 1 %}
+                                            <span class="badge bg-primary">From {{ employee.start_date|date:"M j" }}</span>
+                                            {% else %}
+                                            <span class="badge bg-success">Full month</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            No timetables available for this employee.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Generation Options -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">Generation Options</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="include_food_pickup" name="include_food_pickup" checked>
+                                        <label class="form-check-label" for="include_food_pickup">
+                                            Include in food pickup rotation
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="overwrite_existing" name="overwrite_existing">
+                                        <label class="form-check-label" for="overwrite_existing">
+                                            Overwrite existing schedules
+                                        </label>
+                                        <div class="form-text text-warning">Warning: This will replace any existing schedules</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if timetables %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'employee_list' %}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-calendar-plus"></i> Add to Selected Timetables
+                        </button>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Information Card -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>How it works:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check text-success"></i> Schedules generated from employee start date</li>
+                    <li><i class="bi bi-check text-success"></i> Follows department-specific shift rules</li>
+                    <li><i class="bi bi-check text-success"></i> Respects existing time-off requests</li>
+                    <li><i class="bi bi-check text-success"></i> Integrates with weekly rotation system</li>
+                    <li><i class="bi bi-check text-success"></i> Includes in food pickup duties</li>
+                </ul>
+
+                <hr>
+
+                <h6>Department Rules:</h6>
+                <div class="mb-3">
+                    <strong>Inbound:</strong>
+                    <ul class="small">
+                        <li>2 employees at 8:00 AM daily</li>
+                        <li>Remaining distributed 9AM-11AM</li>
+                        <li>Weekly rotation for fairness</li>
+                        <li>Saturday/Sunday rotation</li>
+                    </ul>
+                </div>
+                <div>
+                    <strong>Outbound:</strong>
+                    <ul class="small">
+                        <li>Balanced 8AM-5PM / 9AM-6PM</li>
+                        <li>Weekly shift rotation</li>
+                        <li>No Sunday work</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'employee_detail' employee.id %}" class="btn btn-outline-primary">
+                        <i class="bi bi-person"></i> View Employee Details
+                    </a>
+                    <a href="{% url 'admin:timetable_employee_change' employee.id %}" class="btn btn-outline-warning">
+                        <i class="bi bi-pencil"></i> Edit Employee
+                    </a>
+                    <a href="{% url 'my_schedule' %}" class="btn btn-outline-info">
+                        <i class="bi bi-calendar-week"></i> View Sample Schedule
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all functionality
+    const selectAll = document.getElementById('select-all');
+    const timetableCheckboxes = document.querySelectorAll('.timetable-checkbox');
+    
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            timetableCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+        });
+    }
+
+    // Update select all when individual checkboxes change
+    timetableCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(timetableCheckboxes).every(cb => cb.checked);
+            selectAll.checked = allChecked;
+        });
+    });
+
+    // Form submission confirmation
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const selectedTimetables = document.querySelectorAll('input[name="timetables"]:checked');
+            if (selectedTimetables.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one timetable.');
+                return false;
+            }
+            
+            const overwrite = document.getElementById('overwrite_existing').checked;
+            if (overwrite) {
+                if (!confirm('Warning: This will overwrite existing schedules. Are you sure?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    }
+});
+</script>
+{% endblock %}
